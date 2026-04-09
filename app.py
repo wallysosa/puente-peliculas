@@ -1,60 +1,54 @@
-import requests
+import cloudscraper
 import re
-from bs4 import BeautifulSoup
 from flask import Flask, Response
 
 app = Flask(__name__)
 
 @app.route('/lista.m3u')
 def generar_m3u():
-    # Intentamos con el Sitemap, que es lo más estructurado que tienen
-    sitemap_url = "https://www.peelink2.com/post-sitemap.xml"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        'Referer': 'https://www.google.com/'
-    }
+    # Usamos cloudscraper para saltar protecciones de Cloudflare/Bots
+    scraper = cloudscraper.create_scraper()
+    
+    # Intentamos leer la portada directamente
+    url_fuente = "https://www.peelink2.com/"
     
     m3u_content = "#EXTM3U\n\n"
     
     try:
-        # 1. Obtenemos las URLs del sitemap
-        r = requests.get(sitemap_url, headers=headers, timeout=15)
-        soup = BeautifulSoup(r.content, 'xml')
-        # Filtramos las últimas 15 películas para no saturar tu RAM de 4GB
-        urls = [loc.text for loc in soup.find_all('loc')][:15]
+        # 1. Obtenemos el HTML de la portada
+        response = scraper.get(url_fuente, timeout=15)
+        html = response.text
         
-        for url in urls:
+        # 2. Buscamos todas las URLs de posts de películas (ej: /2026/04/pelicula.html)
+        # Usamos un Set para no repetir películas
+        enlaces = set(re.findall(r'https://www\.peelink2\.com/20\d{2}/\d{2}/[^"\'>]+\.html', html))
+        
+        # 3. Procesamos las primeras 10 para que sea rápido
+        for url in list(enlaces)[:10]:
             try:
-                # 2. Entramos a cada película
-                res = requests.get(url, headers=headers, timeout=10)
-                html = res.text
+                res_peli = scraper.get(url, timeout=10)
+                peli_html = res_peli.text
                 
-                # 3. Buscamos Vimeos, pero también otros servidores comunes si falla
-                # El regex busca cualquier cosa que parezca un ID de video en vimeos.net
-                vimeo_match = re.search(r'https?://vimeos\.net/embed/[\w-]+', html)
+                # Buscamos el ID de Vimeo
+                vimeo_match = re.search(r'https?://vimeos\.net/embed/[\w-]+', peli_html)
                 
                 if vimeo_match:
-                    link = vimeo_match.group(0)
-                    # Sacamos el título de la URL de forma elegante
+                    video_link = vimeo_match.group(0)
+                    # Título limpio desde la URL
                     titulo = url.split('/')[-1].replace('.html', '').replace('-', ' ').title()
                     
-                    # Buscamos si hay una imagen (póster) en el código
-                    img_match = re.search(r'https?://[^"\'\s]+\.(?:jpg|png|jpeg)', html)
-                    poster = img_match.group(0) if img_match else ""
-
-                    m3u_content += f'#EXTINF:-1 tvg-logo="{poster}", {titulo}\n'
-                    m3u_content += f"{link}\n\n"
+                    m3u_content += f'#EXTINF:-1, {titulo}\n'
+                    m3u_content += f"{video_link}\n\n"
             except:
                 continue
-                
-    except Exception as e:
-        m3u_content += f"#EXTINF:-1, Error de conexion: {str(e)}\n"
-        m3u_content += "https://vimeos.net/embed/error\n"
 
-    # Si al final no encontró nada, ponemos un canal de relleno para que la lista no sea 0kb
-    if len(m3u_content) < 20:
-        m3u_content += "#EXTINF:-1, [Mantenimiento] Reintentar mas tarde\n"
-        m3u_content += "https://vimeos.net/embed/mantenimiento\n"
+    except Exception as e:
+        print(f"Error: {e}")
+
+    # Si sigue vacío, al menos ponemos un link que funcione para probar la TV
+    if m3u_content == "#EXTM3U\n\n":
+        m3u_content += "#EXTINF:-1, [AVISO] El sitio esta bajo proteccion fuerte. Reintenta en 5 min.\n"
+        m3u_content += "https://vimeos.net/embed/espera\n"
 
     return Response(m3u_content, mimetype='audio/x-mpegurl')
 

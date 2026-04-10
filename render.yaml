@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: m3u-generator
+    runtime: python
+    buildCommand: |
+      pip install -r requirements.txt
+      python -m playwright install chromium --with-deps
+    startCommand: python app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+    healthCheckPath: /lista.m3u

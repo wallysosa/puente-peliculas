@@ -2,7 +2,6 @@ import subprocess
 import os
 
 # CONFIGURACIÓN DE CANALES (YouTube Live)
-# Formato: "Nombre": ["URL_YouTube", "Logo", "Grupo"]
 canales_yt = {
     # --- ARGENTINA ---
     "América TV": ["https://www.youtube.com/@americaenvivo/live", "https://i.imgur.com/uRj0S9m.png", "ARGENTINA"],
@@ -34,7 +33,7 @@ canales_yt = {
 
 def get_m3u8(url):
     try:
-        # Añadimos --quiet para no llenar el log y --no-warnings
+        # Extracción optimizada para GitHub Actions
         result = subprocess.run(
             ['yt-dlp', '-g', '--format', 'best', '--no-warnings', url],
             capture_output=True, text=True, check=True, timeout=30
@@ -45,26 +44,24 @@ def get_m3u8(url):
         return None
 
 def main():
-    # 1. Cargar la lista base (flow_base.m3u)
-    if os.path.exists("flow_base.m3u"):
-        with open("flow_base.m3u", "r", encoding="utf-8") as f:
-            contenido = f.read().strip() + "\n"
-    else:
-        contenido = "#EXTM3U\n"
+    # Iniciamos la lista limpia solo con el encabezado M3U
+    contenido = "#EXTM3U\n"
+    contenido += "# --- LISTA YOUTUBE LIVE ---\n\n"
 
-    contenido += "\n# --- CANALES ACTUALIZADOS (YOUTUBE LIVE) ---\n"
-
-    # 2. Obtener links dinámicos de YouTube
+    # Procesar solo los canales del diccionario
     for nombre, info in canales_yt.items():
-        print(f"Buscando link: {nombre}...")
+        print(f"Obteniendo link: {nombre}...")
         link_directo = get_m3u8(info[0])
+        
         if link_directo:
-            contenido += f'#EXTINF:-1 tvg-logo="{info[1]}" group-title="{info[2]}", {nombre}\n{link_directo}\n'
+            contenido += f'#EXTINF:-1 tvg-logo="{info[1]}" group-title="{info[2]}", {nombre}\n'
+            contenido += f'{link_directo}\n'
 
-    # 3. Escribir el archivo final lista_total.m3u
+    # Guardar el archivo final
     with open("lista_total.m3u", "w", encoding="utf-8") as f:
         f.write(contenido)
-    print("¡Proceso terminado! Lista unificada creada con éxito.")
+    
+    print("¡Hecho! La lista de YouTube ha sido generada.")
 
 if __name__ == "__main__":
     main()

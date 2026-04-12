@@ -2,9 +2,8 @@ name: Actualizar Lista M3U
 
 on:
   schedule:
-    # Se ejecuta cada 6 horas automáticamente
     - cron: '0 */6 * * *'
-  workflow_dispatch: # Permite ejecutarlo manualmente desde la pestaña Actions
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -22,19 +21,25 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Instalar yt-dlp actualizado
+    - name: Instalar yt-dlp
       run: |
         python -m pip install --upgrade pip
         pip install yt-dlp
 
+    - name: Crear archivo de cookies
+      # Aquí usamos el secreto que guardaste en GitHub Settings
+      run: |
+        echo "${{ secrets.YT_COOKIES }}" > cookies.txt
+
     - name: Ejecutar script de unificación
       run: python update_playlist.py
 
-    - name: Guardar y subir cambios
+    - name: Subir cambios a GitHub
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
+        # Borramos las cookies para que no se queden guardadas en tu repo público
+        rm -f cookies.txt 
         git add lista_total.m3u
-        # El || exit 0 evita errores si no hay cambios en la lista
         git commit -m "Lista actualizada: $(date)" || exit 0
         git push

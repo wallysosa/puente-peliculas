@@ -1,9 +1,12 @@
 name: Generar Lista M3U
 
 on:
-  workflow_dispatch:        # ejecución manual
+  workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'  # cada 6 horas automático
+    - cron: '0 */6 * * *'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # soluciona el warning de Node.js
 
 jobs:
   generar:
@@ -21,21 +24,28 @@ jobs:
       - name: Instalar yt-dlp
         run: pip install -U yt-dlp
 
+      # Escritura segura: evita que echo corrompa saltos de línea o caracteres especiales
       - name: Crear cookies.txt desde secret
-        run: echo "${{ secrets.COOKIES_TXT }}" > cookies.txt
+        env:
+          COOKIES_CONTENT: ${{ secrets.COOKIES_TXT }}
+        run: printf '%s' "$COOKIES_CONTENT" > cookies.txt
 
       - name: Verificar cookies.txt
         run: |
-          if [ ! -s cookies.txt ]; then
-            echo "ERROR: cookies.txt está vacío"
+          echo "--- Primeras 3 líneas de cookies.txt ---"
+          head -3 cookies.txt
+          echo "--- Fin preview ---"
+          LINEAS=$(wc -l < cookies.txt)
+          echo "Total líneas: $LINEAS"
+          if [ "$LINEAS" -lt 2 ]; then
+            echo "ERROR: cookies.txt parece vacío o inválido"
             exit 1
           fi
-          echo "cookies.txt OK ($(wc -l < cookies.txt) líneas)"
 
       - name: Ejecutar script
         run: python generar_lista.py
 
-      - name: Verificar que el M3U no está vacío
+      - name: Verificar lista generada
         run: |
           if [ ! -s lista_total.m3u ]; then
             echo "ERROR: lista_total.m3u está vacío"
@@ -43,14 +53,14 @@ jobs:
           fi
           echo "Canales encontrados: $(grep -c '#EXTINF' lista_total.m3u)"
 
-      - name: Subir lista_total.m3u como artefacto
+      - name: Subir lista como artefacto
         uses: actions/upload-artifact@v4
         with:
           name: lista-m3u
           path: lista_total.m3u
           retention-days: 1
 
-      - name: Commitear lista al repo (opcional)
+      - name: Commitear lista al repo
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"

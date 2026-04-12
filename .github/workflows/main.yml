@@ -2,9 +2,12 @@ name: Actualizar Lista M3U
 
 on:
   schedule:
-    # Se ejecuta cada 6 horas para mantener los links vivos
     - cron: '0 */6 * * *'
-  workflow_dispatch: # Permite ejecutarlo manualmente desde la web
+  workflow_dispatch:
+
+# Esto da permiso explícito para que el script pueda subir el archivo .m3u
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -12,26 +15,28 @@ jobs:
 
     steps:
     - name: Checkout del código
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4 # Actualizado para evitar el warning de Node
 
     - name: Configurar Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5 # Actualizado para evitar el warning de Node
       with:
-        python-version: '3.9'
+        python-version: '3.11'
 
-    - name: Instalar dependencias
+    - name: Instalar yt-dlp
       run: |
         sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
         sudo chmod a+rx /usr/local/bin/yt-dlp
-        pip install requests
 
     - name: Ejecutar script
       run: python update_playlist.py
 
     - name: Guardar cambios en GitHub
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git add lista_total.m3u
-        git commit -m "Lista actualizada $(date)" || echo "Sin cambios"
+        # El comando || exit 0 evita que el workflow falle si no hay cambios en la lista
+        git commit -m "Lista actualizada $(date)" || exit 0
         git push

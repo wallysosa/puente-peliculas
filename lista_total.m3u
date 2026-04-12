@@ -1,9 +1,6 @@
 #EXTM3U url-tvg="https://www.bevy.be/bevyfiles/argentina.xml,https://www.bevy.be/bevyfiles/argentina.xml,https://epg.programadorx.cl/mdiaz/gratis.xml,https://www.temporary-url.com/0FF3,https://www.temporary-url.com/567DBA,https://www.open-epg.com/files/argentina4.xml.gz,https://www.open-epg.com/files/uruguay2.xml.gz"
 
-#EXTINF:-1 tvg-id="788dtv.cl" tvg-logo="https://i.imgur.com/7OnVv8y.png" group-title="🇺🇾 VTV", VTV 
-http://45.170.40.11:8000/play/a04i/index.m3u8?hls
-#EXTINF:-1 tvg-id="788dtv.cl" tvg-logo="https://i.imgur.com/7OnVv8y.png" group-title="🇺🇾 VTV", VTV +
-http://45.170.40.11:8000/play/a04g/index.m3u8?hls
+
 
 
 

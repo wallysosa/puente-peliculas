@@ -1,7 +1,7 @@
 import subprocess
 import os
 
-# CONFIGURACIÓN DE CANALES (YouTube Live)
+# CONFIGURACIÓN DE CANALES
 canales_yt = {
     "América TV": ["https://www.youtube.com/@americaenvivo/live", "https://i.imgur.com/uRj0S9m.png", "ARGENTINA"],
     "A24": ["https://www.youtube.com/@a24com/live", "https://i.imgur.com/66Yv0vR.png", "ARGENTINA"],
@@ -13,56 +13,50 @@ canales_yt = {
     "La Nación+": ["https://www.youtube.com/@lanacionmas/live", "https://i.imgur.com/43LNplus.png", "ARGENTINA"],
     "Telefe Noticias": ["https://www.youtube.com/@telefenoticias/live", "https://i.imgur.com/dF9Tele.png", "ARGENTINA"],
     "RTVE Noticias 24h": ["https://www.youtube.com/@rtve/live", "https://i.imgur.com/8bCanal.png", "ESPAÑA"],
-    "El País": ["https://www.youtube.com/@elpais/live", "https://i.imgur.com/02ElPais.png", "ESPAÑA"],
-    "DW Español": ["https://www.youtube.com/@dwespanol/live", "https://i.imgur.com/LAJoz4E.png", "LATAM"],
-    "France 24": ["https://www.youtube.com/@France24Espanol/live", "https://i.imgur.com/d4F24.png", "LATAM"],
-    "TeleSUR": ["https://www.youtube.com/@telesur/live", "https://i.imgur.com/b3Telesur.png", "LATAM"]
+    "DW Español": ["https://www.youtube.com/@dwespanol/live", "https://i.imgur.com/LAJoz4E.png", "LATAM"]
 }
 
 def get_m3u8(url):
     try:
-        # Comando optimizado para evitar bloqueos en servidores cloud
+        # Usamos opciones más agresivas para evitar el bloqueo de bot
+        # --force-overwrites y --no-playlist ayudan a ir directo al grano
         result = subprocess.run(
             [
                 'yt-dlp', 
-                '-g', 
-                '--format', 'best', 
-                '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                '--get-url',
+                '--format', 'best',
                 '--no-check-certificates',
-                '--quiet',
-                '--no-warnings',
+                '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                '--geo-bypass', # Intenta saltar restricciones regionales
                 url
             ],
-            capture_output=True, text=True, check=True, timeout=40
+            capture_output=True, text=True, check=True, timeout=60
         )
         link = result.stdout.strip()
-        # Verificamos que el link sea válido (googlevideo o m3u8 directo)
-        return link if "googlevideo.com" in link or "m3u8" in link else None
+        if "googlevideo.com" in link or "m3u8" in link:
+            return link
+        return None
     except Exception as e:
-        print(f"Error extrayendo {url}: {e}")
+        print(f"Error en {url}: {e}")
         return None
 
 def main():
-    print("Iniciando generación de lista...")
     contenido = "#EXTM3U\n"
     encontrados = 0
 
     for nombre, info in canales_yt.items():
-        print(f"Buscando enlace para: {nombre}")
+        print(f"Procesando: {nombre}")
         link_directo = get_m3u8(info[0])
         
         if link_directo:
             contenido += f'#EXTINF:-1 tvg-logo="{info[1]}" group-title="{info[2]}", {nombre}\n'
             contenido += f'{link_directo}\n'
             encontrados += 1
-        else:
-            print(f"Fallo al obtener enlace para {nombre}")
 
-    # Guardar el archivo final que leerá tu App (ej. Kodi o VLC)
     with open("lista_total.m3u", "w", encoding="utf-8") as f:
         f.write(contenido)
     
-    print(f"\n¡Proceso finalizado! Canales en la lista: {encontrados}")
+    print(f"Finalizado. Canales operativos: {encontrados}")
 
 if __name__ == "__main__":
     main()

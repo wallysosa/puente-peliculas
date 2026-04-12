@@ -2,10 +2,10 @@ name: Actualizar Lista M3U
 
 on:
   schedule:
+    # Se ejecuta cada 6 horas automáticamente
     - cron: '0 */6 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # Permite ejecutarlo manualmente desde la pestaña Actions
 
-# Esto da permiso explícito para que el script pueda subir el archivo .m3u
 permissions:
   contents: write
 
@@ -14,29 +14,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout del código
-      uses: actions/checkout@v4 # Actualizado para evitar el warning de Node
+    - name: Checkout del repositorio
+      uses: actions/checkout@v4
 
     - name: Configurar Python
-      uses: actions/setup-python@v5 # Actualizado para evitar el warning de Node
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
-    - name: Instalar yt-dlp
+    - name: Instalar yt-dlp actualizado
       run: |
-        sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-        sudo chmod a+rx /usr/local/bin/yt-dlp
+        python -m pip install --upgrade pip
+        pip install yt-dlp
 
-    - name: Ejecutar script
+    - name: Ejecutar script de unificación
       run: python update_playlist.py
 
-    - name: Guardar cambios en GitHub
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Guardar y subir cambios
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git add lista_total.m3u
-        # El comando || exit 0 evita que el workflow falle si no hay cambios en la lista
-        git commit -m "Lista actualizada $(date)" || exit 0
+        # El || exit 0 evita errores si no hay cambios en la lista
+        git commit -m "Lista actualizada: $(date)" || exit 0
         git push
